@@ -1,8 +1,11 @@
 #include <torch/script.h>
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <sstream>
 #include <memory>
 #include <string>
+#include <cstring>
+#include <cstdlib>
 #include <ctime>
 #include <vector>
 #include <dirent.h>
@@ -10,9 +13,39 @@
 using namespace std;
 // https://pytorch.org/tutorials/advanced/cpp_export.html
 
-string image_path ("/home/luxiangzhe/git/model_deployment/c/image");
+#ifndef MAX_FILENAME_LEN
+    #define MAX_FILENAME_LEN 512
+#endif
 
-void getfiles(string path, vector<string>& files) {
+torch::jit::script::Module module;
+
+void load_module(const char* path) {
+    module = torch::jit::load(path);
+}
+
+int predict_file(const char* path) {
+    auto image = cv::imread(path, cv::ImreadModes::IMREAD_COLOR);
+    if (image.size().empty()) {
+        return -1;
+    }
+    cv::Mat image_transformed;
+    cv::resize(image, image_transformed, cv::Size(224, 224));
+    cv::cvtColor(image_transformed, image_transformed, cv::COLOR_BGR2RGB);
+
+    //图像转换为tensor
+    torch::Tensor image_tensor = torch::from_blob(image_transformed.data,
+                                                {image_transformed.rows, image_transformed.cols, 3},
+                                                torch::kByte);
+    image_tensor = image_tensor.permute({2, 0, 1});
+    image_tensor = image_tensor.toType(torch::kFloat);
+    image_tensor = image_tensor.div(255);
+    image_tensor = image_tensor.unsqueeze(0);
+    //前向传播
+    at::Tensor output = module.forward({image_tensor}).toTensor();
+    return std::get<1>(output.max(1, true)).item<int>();
+}
+
+static void getfiles(string path, vector<string>& files) {
     struct dirent *ptr;
     DIR *dir;
     dir = opendir(path.c_str());
@@ -23,60 +56,43 @@ void getfiles(string path, vector<string>& files) {
     }
 }
 
-#define MODULE_PATH argv[1]
-
-int main(int argc, const char* argv[]) {
-    torch::jit::script::Module module = torch::jit::load(MODULE_PATH);
-
-//    assert(module != nullptr);
-    cout << "ok\n";
-
-
-    vector<string> files;
-    char * filePath = "/home/luxiangzhe/git/model_deployment/c/image";
-
-////获取该路径下的所有文件
-    getfiles(filePath, files);
+vector<string> predict_folder(const char * path) {
+    vector<string> files, predicts;
+    // 获取该路径下的所有文件
+    getfiles(path, files);
     int size = files.size();
-//    for (int i = 0;i < size;i++)
-//    {
-//        cout<<files[i]<<endl;
-//    }
-
-    clock_t start, end;
-    double totle_time;
-//    //输入图像
-    for (int j=0; j< 1; j++) {
-        for (int i = 0; i < 5; i++) {
-            auto image = cv::imread(image_path + '/' + files[i], cv::ImreadModes::IMREAD_COLOR);
-            cv::Mat image_transformed;
-            cv::resize(image, image_transformed, cv::Size(224, 224));
-            cv::cvtColor(image_transformed, image_transformed, cv::COLOR_BGR2RGB);
-
-            //图像转换为tensor
-            torch::Tensor image_tensor = torch::from_blob(image_transformed.data,
-                                                          {image_transformed.rows, image_transformed.cols, 3},
-                                                          torch::kByte);
-            image_tensor = image_tensor.permute({2, 0, 1});
-            image_tensor = image_tensor.toType(torch::kFloat);
-            image_tensor = image_tensor.div(255);
-            image_tensor = image_tensor.unsqueeze(0);
-
-//            image_tensor = image_tensor.to(at::kCUDA);
-            start = clock();
-            //前向传播
-            at::Tensor output = module.forward({image_tensor}).toTensor();
-            end = clock();
-            totle_time = (double)(end-start) /CLOCKS_PER_SEC;
-            cout << "totle time: " << totle_time <<endl;
-            auto max_result = output.max(1, true);
-            auto max_index = std::get<1>(max_result).item<float>();
-//            cout << max_result <<"   "<< max_index<<endl;
+    int last = strlen(path);
+    char* buf = (char*)malloc(last + MAX_FILENAME_LEN);
+    memcpy(buf, path, last);
+    for (int i = 0; i < size; i++) {
+        ostringstream ostr;
+        auto filename = files[i].c_str();
+        int len = strlen(filename);
+        if (len < MAX_FILENAME_LEN - 1) {
+            memcpy(buf+last, filename, len);
+            buf[last+len] = 0;
+            ostr << "<" << predict_file(buf) << ">: " << filename << endl;
+            predicts.push_back(ostr.str());
         }
     }
-//    end = clock();
-//    totle_time = (double)(end-start) /CLOCKS_PER_SEC;
-//    cout << "totle time: " << totle_time <<endl;
-//    std::cout <<"label: " <<max_index<<std::endl;
+    free(buf);
+    return predicts;
+}
+
+#define DEBUG
+#ifdef DEBUG
+#define MODULE_PATH argv[1]
+#define IMAGE_PATH argv[2]
+int main(int argc, const char* argv[]) {
+    auto ts = time(NULL);
+    load_module(MODULE_PATH);
+    cout << "Load module cost: " << time(NULL) - ts << "s." << endl;
+    ts = time(NULL);
+    auto p = predict_folder(IMAGE_PATH);
+    cout << "Predict " << p.size() << " files cost: " << time(NULL) - ts << "s." << endl;
+    for (int i = 0; i < p.size(); i++) {
+        cout << p[i];
+    }
     return 0;
 }
+#endif

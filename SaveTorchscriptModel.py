@@ -15,9 +15,16 @@ def load_checkpoint(filepath):
     model.eval()
     return model
 
-model = load_checkpoint('./resnext101_32x8.pth')
+model = load_checkpoint('./ero.pth')
 example = torch.rand(1, 3, 224, 224)
 traced_script_module = torch.jit.trace(model, example)
-traced_script_module.save('./trace_resnext101_32x8.pt')
+traced_script_module.save('./ero.pt')
+output = traced_script_module(torch.ones(1, 3, 224, 224))
+print(output)
+
+model = load_checkpoint('./nor.pth')
+example = torch.rand(1, 3, 224, 224)
+traced_script_module = torch.jit.trace(model, example)
+traced_script_module.save('./nor.pt')
 output = traced_script_module(torch.ones(1, 3, 224, 224))
 print(output)
