@@ -1,2 +1,2 @@
 # setu-class-cpp
-Cpp lib for load &amp; use pytorch model of setu-class.
+Cpp lib to load & use pytorch model of setu-class.
