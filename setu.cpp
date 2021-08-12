@@ -30,7 +30,6 @@ int predict_file(const char* path, int index) {
     cv::Mat image_transformed;
     cv::resize(image, image_transformed, cv::Size(224, 224));
     cv::cvtColor(image_transformed, image_transformed, cv::COLOR_BGR2RGB);
-
     //图像转换为tensor
     torch::Tensor image_tensor = torch::from_blob(image_transformed.data,
                                                 {image_transformed.rows, image_transformed.cols, 3},
@@ -41,7 +40,7 @@ int predict_file(const char* path, int index) {
     image_tensor = image_tensor.unsqueeze(0);
     //前向传播
     at::Tensor output = modules[index].forward({image_tensor}).toTensor();
-    return std::get<1>(output.max(1, true)).item<int>();
+    return get<1>(output.max(1, true)).item<int>();
 }
 }
 
