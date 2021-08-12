@@ -5,6 +5,7 @@
         #define MAX_FILENAME_LEN 512
     #endif
 
-    void load_module(const char* path);
-    int predict_file(const char* path);
+    // return module index
+    int load_module(const char* path);
+    int predict_file(const char* path, int index);
 #endif // _SETU_H_

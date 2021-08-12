@@ -13,20 +13,20 @@
 using namespace std;
 // https://pytorch.org/tutorials/advanced/cpp_export.html
 
-torch::jit::script::Module module;
+vector<torch::jit::script::Module> modules;
 
 extern "C" {
 #include "setu.h"
 
-void load_module(const char* path) {
-    module = torch::jit::load(path);
+int load_module(const char* path) {
+    modules.push_back(torch::jit::load(path));
+    return modules.size() - 1;
 }
 
-int predict_file(const char* path) {
+int predict_file(const char* path, int index) {
+    if (index < 0 || index >= modules.size()) return -2;
     auto image = cv::imread(path, cv::ImreadModes::IMREAD_COLOR);
-    if (image.size().empty()) {
-        return -1;
-    }
+    if (image.size().empty()) return -1;
     cv::Mat image_transformed;
     cv::resize(image, image_transformed, cv::Size(224, 224));
     cv::cvtColor(image_transformed, image_transformed, cv::COLOR_BGR2RGB);
@@ -40,7 +40,7 @@ int predict_file(const char* path) {
     image_tensor = image_tensor.div(255);
     image_tensor = image_tensor.unsqueeze(0);
     //前向传播
-    at::Tensor output = module.forward({image_tensor}).toTensor();
+    at::Tensor output = modules[index].forward({image_tensor}).toTensor();
     return std::get<1>(output.max(1, true)).item<int>();
 }
 }
@@ -73,7 +73,7 @@ vector<string> predict_folder(const char * path) {
         if (len < MAX_FILENAME_LEN - 1) {
             memcpy(buf+last, filename, len);
             buf[last+len] = 0;
-            ostr << "<" << predict_file(buf) << ">: " << filename << endl;
+            ostr << "<" << predict_file(buf, 0) << ">: " << filename << endl;
             predicts.push_back(ostr.str());
         }
     }

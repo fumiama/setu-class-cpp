@@ -25,8 +25,8 @@ Use it as below.
 #define IMAGE_PATH argv[2]
 
 int main(int argc, const char* argv[]) {
-    load_module(MODULE_PATH);
-    printf("%d\n", predict_file(IMAGE_PATH));
+    int i = load_module(MODULE_PATH);
+    printf("[%d]: %d - %s\n", i, predict_file(IMAGE_PATH, i), IMAGE_PATH);
     return 0;
 }
 ```

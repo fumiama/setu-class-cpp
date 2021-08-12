@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(setu-class-cpp)
 SET(CMAKE_BUILD_TYPE "Release")
+SET(CMAKE_INSTALL_PREFIX /usr/local/)
 
-set(CMAKE_PREFIX_PATH
-		/usr/local/share/libtorch/
-		/usr/local/src/opencv-4.5.3/build/)
 set(OpenCV_DIR /usr/local/share/opencv4/)
 set(OpenCV_LIBRARY_DIRS /usr/local/lib/)
 
