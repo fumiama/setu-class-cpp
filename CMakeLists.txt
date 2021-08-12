@@ -18,23 +18,23 @@ if (OpenCV_FOUND)
 	MESSAGE (STATUS "OpenCV_INCLUDEDIRS: ${OpenCV_INCLUDE_DIRS}")
 	MESSAGE (STATUS "OpenCV_LIBRARYDIRS: ${OpenCV_LIBRARY_DIRS}")
 
-	# For test
-	add_executable(setu setu.cpp)
-	target_link_libraries(setu ${TORCH_LIBRARIES} ${OpenCV_LIBS})
-
-	# For build lib
-	# add_library(setu SHARED setu.cpp)
-	# add_library(setus STATIC setu.cpp)
-	# set_target_properties(setus PROPERTIES OUTPUT_NAME setu)
-	# add_executable(t test.c)
-
+	# For testing
+	# add_executable(setu setu.cpp)
 	# target_link_libraries(setu ${TORCH_LIBRARIES} ${OpenCV_LIBS})
-	# target_link_libraries(setus ${TORCH_LIBRARIES} ${OpenCV_LIBS})
-	# target_link_libraries(t setu)
 
-	# INSTALL(TARGETS setu LIBRARY DESTINATION lib)
-	# INSTALL(TARGETS setus ARCHIVE DESTINATION lib)
-	# INSTALL(FILES setu.h DESTINATION include)
+	# For building lib
+	add_library(setu SHARED setu.cpp)
+	add_library(setus STATIC setu.cpp)
+	set_target_properties(setus PROPERTIES OUTPUT_NAME setu)
+	add_executable(t test.c)
+
+	target_link_libraries(setu ${TORCH_LIBRARIES} ${OpenCV_LIBS})
+	target_link_libraries(setus ${TORCH_LIBRARIES} ${OpenCV_LIBS})
+	target_link_libraries(t setu)
+
+	INSTALL(TARGETS setu LIBRARY DESTINATION lib)
+	INSTALL(TARGETS setus ARCHIVE DESTINATION lib)
+	INSTALL(FILES setu.h DESTINATION include)
 else()
 	MESSAGE (STATUS "OpenCV: not found")
 endif(OpenCV_FOUND)

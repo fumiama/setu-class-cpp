@@ -13,11 +13,10 @@
 using namespace std;
 // https://pytorch.org/tutorials/advanced/cpp_export.html
 
-#ifndef MAX_FILENAME_LEN
-    #define MAX_FILENAME_LEN 512
-#endif
-
 torch::jit::script::Module module;
+
+extern "C" {
+#include "setu.h"
 
 void load_module(const char* path) {
     module = torch::jit::load(path);
@@ -44,6 +43,9 @@ int predict_file(const char* path) {
     at::Tensor output = module.forward({image_tensor}).toTensor();
     return std::get<1>(output.max(1, true)).item<int>();
 }
+}
+
+#ifdef DEBUG
 
 static void getfiles(string path, vector<string>& files) {
     struct dirent *ptr;
@@ -79,8 +81,6 @@ vector<string> predict_folder(const char * path) {
     return predicts;
 }
 
-#define DEBUG
-#ifdef DEBUG
 #define MODULE_PATH argv[1]
 #define IMAGE_PATH argv[2]
 int main(int argc, const char* argv[]) {
@@ -95,4 +95,5 @@ int main(int argc, const char* argv[]) {
     }
     return 0;
 }
+
 #endif
